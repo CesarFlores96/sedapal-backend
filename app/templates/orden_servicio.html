@@ -1,0 +1,1936 @@
+<!DOCTYPE html>
+<!--
+Plantilla Jinja2 para FastAPI.
+Renderizar con: template.render(orden=<dict>)
+Campos principales usados:
+numero_servicio, nis, generada_por, cus, cup, oficina_comercial, ruta, itinerario,
+tipo_suministro, fecha_emision, fecha_resolucion, actividad_solicitada,
+observaciones, situacion_predio, contratista, reclamo, expediente,
+razon_social, ruc, telefono, direccion, urbanizacion, distrito, referencia,
+acceso_inmueble, cua, actividad_predio, medidor, diametro, ultima_lectura,
+dispositivo_seguridad, punto_medida, acometidas_asociadas, fuente, cota.
+-->
+<html lang="es">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Orden Servicio {{ orden.numero_servicio | default('', true) }}</title>
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    @page {
+      size: A4 portrait;
+      margin: 0;
+    }
+
+    body {
+      margin: 0;
+      background: #e9e9e9;
+      color: #000;
+      font-family: Arial, Helvetica, sans-serif;
+      font-size: 15px;
+      line-height: 1.12;
+    }
+
+    .page {
+      width: 1120px;
+      min-height: 1588px;
+      margin: 0 auto 28px auto;
+      background: #fff;
+      position: relative;
+      padding: 44px 48px 36px 48px;
+      overflow: hidden;
+    }
+
+    .sedapal-logo {
+      position: absolute;
+      top: 22px;
+      left: 56px;
+      width: 150px;
+      height: 58px;
+      font-size: 34px;
+      font-weight: 800;
+      letter-spacing: -2px;
+      transform: rotate(-3deg);
+    }
+
+    .sedapal-logo::after {
+      content: "";
+      position: absolute;
+      left: 0;
+      bottom: 5px;
+      width: 145px;
+      height: 16px;
+      border-top: 4px solid #000;
+      border-bottom: 2px solid #000;
+      border-radius: 50%;
+      transform: rotate(-7deg);
+      opacity: .85;
+    }
+
+    .top-title {
+      text-align: right;
+      padding-right: 90px;
+      font-size: 24px;
+      font-weight: 700;
+      margin-top: 28px;
+      margin-bottom: 10px;
+    }
+
+    .header-data {
+      width: 870px;
+      margin-left: 68px;
+      font-size: 18px;
+    }
+
+    .header-data .row {
+      display: grid;
+      grid-template-columns: 170px 320px 185px 1fr;
+      column-gap: 0;
+      min-height: 25px;
+      align-items: start;
+    }
+
+    .header-data .row.two {
+      grid-template-columns: 310px 255px 1fr;
+    }
+
+    .header-data .row.date-row {
+      grid-template-columns: 310px 120px 440px;
+    }
+
+    .header-data .row.date-row>div {
+      white-space: nowrap;
+    }
+
+    .header-data .row.three {
+      grid-template-columns: 350px 1fr;
+    }
+
+    .header-data .row.four {
+      grid-template-columns: 410px 1fr;
+    }
+
+    .header-data .row.contract {
+      grid-template-columns: 1fr 260px 260px;
+    }
+
+    .registered {
+      width: 875px;
+      margin-left: 68px;
+      margin-top: 8px;
+      border: 2px solid #000;
+      font-size: 17px;
+    }
+
+    .registered-title,
+    .section-title {
+      border-bottom: 2px solid #000;
+      text-align: center;
+      font-weight: 700;
+      min-height: 25px;
+      padding-top: 3px;
+      font-size: 16px;
+    }
+
+    .registered-body {
+      position: relative;
+      min-height: 315px;
+      padding: 10px 22px 8px 22px;
+    }
+
+    .small-b {
+      font-weight: 700;
+    }
+
+    .user-line {
+      margin-bottom: 28px;
+    }
+
+    .reg-line {
+      margin: 4px 0;
+    }
+
+    .t-ubic {
+      left: 420px;
+      top: 60px;
+      width: 205px;
+    }
+
+    .t-abast {
+      right: 20px;
+      top: 60px;
+      width: 225px;
+    }
+
+    .t-fte {
+      right: 20px;
+      top: 140px;
+      width: 225px;
+    }
+
+    .t-uso {
+      right: 20px;
+      top: 166px;
+      width: 225px;
+    }
+
+    .reg-small-table {
+      position: absolute;
+      border-collapse: collapse;
+      font-size: 16px;
+    }
+
+    .reg-small-table td,
+    .reg-small-table th {
+      border: 1.5px solid #000;
+      padding: 3px 6px;
+      height: 27px;
+      vertical-align: middle;
+      font-weight: 400;
+      text-align: left;
+    }
+
+    .reg-small-table th {
+      font-weight: 400;
+    }
+
+    .t-ubic {
+      left: 420px;
+      top: 78px;
+      width: 205px;
+    }
+
+    .t-abast {
+      right: 20px;
+      top: 78px;
+      width: 225px;
+    }
+
+    .t-fte {
+      right: 20px;
+      top: 158px;
+      width: 225px;
+    }
+
+    .t-uso {
+      right: 20px;
+      top: 184px;
+      width: 225px;
+    }
+
+    .t-uso td {
+      text-align: center;
+      height: 28px;
+    }
+
+    .gap-after-reg {
+      height: 18px;
+    }
+
+    .section {
+      width: 1026px;
+      margin: 0 auto 14px auto;
+      border: 1.5px solid #000;
+      font-size: 11px;
+    }
+
+    .section-title {
+      font-size: 12px;
+      min-height: 24px;
+      padding: 5px 4px 3px;
+    }
+
+    .section-body {
+      padding: 8px 10px 10px 10px;
+    }
+
+    .box,
+    .check {
+      display: inline-block;
+      border: 1.5px solid #000;
+      height: 31px;
+      background: #fff;
+      vertical-align: middle;
+    }
+
+    .check {
+      width: 28px;
+      height: 31px;
+      text-align: center;
+      line-height: 28px;
+      font-weight: 700;
+    }
+
+    .field-value {
+      display: inline-flex !important;
+      align-items: center;
+      padding: 0 6px;
+      white-space: nowrap;
+      overflow: hidden;
+    }
+
+    .thin-box {
+      height: 25px;
+      border: 1.5px solid #000;
+      display: inline-block;
+      vertical-align: middle;
+    }
+
+    .label-under {
+      text-align: center;
+      font-size: 10px;
+      margin-top: 3px;
+      font-weight: 700;
+    }
+
+    .field-wrap {
+      display: flex;
+      flex-direction: column;
+      align-items: stretch;
+      justify-content: flex-start;
+    }
+
+    .line-input {
+      border: 1.5px solid #000;
+      height: 31px;
+      display: inline-block;
+      vertical-align: middle;
+    }
+
+    .dotted-line {
+      display: inline-block;
+      border-bottom: 1px dotted #000;
+      height: 18px;
+      vertical-align: bottom;
+    }
+
+    /* --- AJUSTES DE GRID PARA SECCION 1 --- */
+    .client-grid-1 {
+      display: grid;
+      grid-template-columns: 210px 210px 250px 65px 160px;
+      column-gap: 20px;
+      align-items: start;
+    }
+
+    .client-grid-1 .box {
+      width: 100%;
+    }
+
+    .client-grid-2 {
+      margin-top: 8px;
+      display: grid;
+      grid-template-columns: 160px 45px 30px 50px 30px 50px 30px 1fr;
+      align-items: center;
+      column-gap: 8px;
+    }
+
+    .client-grid-3 {
+      margin-top: 8px;
+      display: grid;
+      grid-template-columns: 50px 1fr 90px 120px 35px 1fr 80px 150px;
+      align-items: center;
+      column-gap: 5px;
+    }
+
+    .client-grid-4 {
+      margin-top: 8px;
+      display: grid;
+      grid-template-columns: 105px 1fr 40px 160px 45px 160px;
+      align-items: center;
+      column-gap: 8px;
+    }
+
+    /* --- AJUSTES DE GRID PARA SECCION 2 --- */
+    .section2 .section-body {
+      padding-top: 8px;
+    }
+
+    .predio-row1 {
+      display: grid;
+      grid-template-columns: 50px 1fr 80px 80px 80px 50px 50px 50px;
+      column-gap: 15px;
+      align-items: start;
+    }
+
+    .predio-row2 {
+      margin-top: 7px;
+      display: grid;
+      grid-template-columns: 50px 1fr 80px 80px 80px 200px 30px;
+      column-gap: 15px;
+      align-items: start;
+    }
+
+    .segmented {
+      display: grid;
+      border: 1.5px solid #000;
+      height: 31px;
+      background: repeating-linear-gradient(to right, transparent 0, transparent 27px, #000 28px, transparent 29px);
+    }
+
+    .center-note {
+      text-align: center;
+      font-size: 11px;
+      font-weight: 700;
+      margin: 14px 0 8px;
+    }
+
+    table {
+      border-collapse: collapse;
+      border: 1.5px solid #000;
+    }
+
+    td,
+    th {
+      border: 1.5px solid #000;
+      padding: 2px 3px;
+      font-weight: 400;
+      vertical-align: middle;
+    }
+
+    .no-border,
+    .no-border td,
+    .no-border th {
+      border: 0;
+    }
+
+    .inspection-grid {
+      display: grid;
+      grid-template-columns: 360px 1fr;
+      column-gap: 45px;
+      align-items: start;
+      min-height: 190px;
+    }
+
+    .habit-table td {
+      width: 53px;
+      height: 28px;
+    }
+
+    .units {
+      margin-top: 10px;
+      margin-left: 95px;
+    }
+
+    .units-title {
+      text-align: center;
+      font-size: 11px;
+      font-weight: 700;
+      margin-bottom: 4px;
+    }
+
+    .units table {
+      width: 255px;
+    }
+
+    .units td,
+    .units th {
+      width: 51px;
+      height: 28px;
+      text-align: center;
+    }
+
+    .units .row-label {
+      border: 0;
+      width: 84px;
+      text-align: left;
+      font-weight: 700;
+    }
+
+    .interior-title {
+      text-align: center;
+      font-size: 11px;
+      font-weight: 700;
+      margin-bottom: 4px;
+    }
+
+    .interior table {
+      width: 560px;
+    }
+
+    .interior td,
+    .interior th {
+      height: 27px;
+      text-align: center;
+    }
+
+    .interior td:first-child,
+    .interior th:first-child {
+      width: 120px;
+      text-align: left;
+    }
+
+    .cua-row {
+      margin-top: 12px;
+      display: grid;
+      grid-template-columns: 40px 666px 210px 28px;
+      column-gap: 10px;
+      align-items: center;
+    }
+
+    .insp-row {
+      margin-top: 12px;
+      display: grid;
+      grid-template-columns: 160px 290px 170px 1fr;
+      column-gap: 15px;
+      align-items: center;
+    }
+
+    .mini-choice td {
+      min-width: 55px;
+      height: 25px;
+      text-align: center;
+      font-size: 10px;
+    }
+
+    .tiny-note {
+      font-size: 8px;
+      margin-top: 3px;
+    }
+
+    .obs-row {
+      margin-top: 12px;
+      display: grid;
+      grid-template-columns: 120px 1fr;
+      column-gap: 8px;
+      align-items: start;
+      min-height: 54px;
+    }
+
+    .obs-lines {
+      height: 54px;
+      background-image: repeating-linear-gradient(to bottom, transparent 0, transparent 25px, #000 26px, transparent 27px);
+      opacity: .9;
+    }
+
+    .page2 .section {
+      margin-bottom: 7px;
+    }
+
+    .section4 .section-body,
+    .section5 .section-body {
+      padding: 8px 10px 8px;
+    }
+
+    /* ESTILOS NUEVOS PARA CAJAS SIMPLES Y SEGMENTADAS */
+    .input-box {
+      border: 1.5px solid #000;
+      height: 25px;
+      background: #fff;
+      width: 100%;
+    }
+
+    .segmented-group {
+      display: flex;
+      border: 1.5px solid #000;
+      border-right: none;
+      height: 25px;
+      background: #fff;
+    }
+
+    .segmented-group div {
+      flex: 1;
+      border-right: 1.5px solid #000;
+    }
+
+    .conn-row1 {
+      display: grid;
+      grid-template-columns: 120px 230px 80px 130px 80px;
+      column-gap: 20px;
+      align-items: start;
+    }
+
+    .conn-row1 .center-labels {
+      display: grid;
+      grid-template-columns: 35px 70px 53px 35px 37px;
+      font-size: 10px;
+      text-align: center;
+      font-weight: 700;
+    }
+
+    .conn-row1b {
+      display: grid;
+      grid-template-columns: 1fr 340px;
+      column-gap: 35px;
+      align-items: start;
+      margin-top: 8px;
+    }
+
+    .strip-title {
+      text-align: center;
+      font-weight: 700;
+      font-size: 10px;
+      margin-bottom: 2px;
+    }
+
+    .strip-title-left {
+      text-align: left;
+      font-weight: 700;
+      font-size: 10px;
+      margin-bottom: 2px;
+    }
+
+    .option-strip {
+      width: 100%;
+      table-layout: fixed;
+    }
+
+    .option-strip th,
+    .option-strip td {
+      height: 22px;
+      text-align: center;
+      font-size: 9px;
+      padding: 1px;
+    }
+
+    /* Agregado para que las tablas con strip tengan fila superior en blanco */
+    .option-strip-with-header th {
+      height: 22px;
+    }
+
+    .option-strip-with-header td {
+      height: 25px;
+    }
+
+    /* Ajuste de altura de fila inferior */
+
+    .conn-row2 {
+      display: grid;
+      grid-template-columns: 390px 205px 365px;
+      column-gap: 20px;
+      align-items: start;
+      margin-top: 7px;
+    }
+
+    .conn-row3 {
+      display: grid;
+      grid-template-columns: 430px 520px;
+      column-gap: 23px;
+      align-items: start;
+      margin-top: 6px;
+    }
+
+    .service-medidor {
+      width: 100%;
+      table-layout: fixed;
+      font-size: 9px;
+    }
+
+    .service-medidor th,
+    .service-medidor td {
+      text-align: center;
+      height: 22px;
+      padding: 1px;
+    }
+
+    .service-medidor .group {
+      font-weight: 700;
+    }
+
+    .meter-table {
+      width: 100%;
+      table-layout: fixed;
+      font-size: 10px;
+    }
+
+    .meter-table th,
+    .meter-table td {
+      text-align: center;
+      height: 20px;
+      padding: 1px;
+    }
+
+    .checks-line {
+      margin-top: 7px;
+      display: grid;
+      grid-template-columns: 240px 30px 45px 30px 180px 255px;
+      align-items: center;
+      column-gap: 8px;
+    }
+
+    .conn-row4 {
+      display: grid;
+      grid-template-columns: 180px 625px 120px;
+      column-gap: 25px;
+      align-items: start;
+      margin-top: 6px;
+    }
+
+    .inc-table {
+      width: 100%;
+      table-layout: fixed;
+      font-size: 9px;
+    }
+
+    .inc-table th,
+    .inc-table td {
+      height: 22px;
+      text-align: center;
+      padding: 1px;
+    }
+
+    .prec-table {
+      width: 100%;
+      table-layout: fixed;
+      font-size: 10px;
+    }
+
+    .prec-table th,
+    .prec-table td {
+      height: 25px;
+      text-align: left;
+    }
+
+    .prec-table th:not(:first-child),
+    .prec-table td:not(:first-child) {
+      text-align: center;
+    }
+
+    .valv-table {
+      width: 100%;
+      table-layout: fixed;
+      font-size: 10px;
+    }
+
+    .valv-table th,
+    .valv-table td {
+      height: 25px;
+      text-align: center;
+      padding: 1px;
+    }
+
+    .security-table {
+      width: 100%;
+      table-layout: fixed;
+      font-size: 10px;
+    }
+
+    .security-table th,
+    .security-table td {
+      height: 25px;
+      text-align: center;
+    }
+
+    .shade {
+      background: repeating-linear-gradient(90deg, #bdbdbd 0, #bdbdbd 1px, #e9e9e9 1px, #e9e9e9 3px);
+    }
+
+    /* --- AJUSTES DE GRID PARA SECCION 5 --- */
+    .section5-top {
+      display: grid;
+      grid-template-columns: 110px 230px 120px 120px 120px 100px;
+      column-gap: 15px;
+      align-items: start;
+    }
+
+    .section5-top .labels {
+      display: grid;
+      grid-template-columns: 35px 70px 53px 35px 37px;
+      font-size: 10px;
+      text-align: center;
+      font-weight: 700;
+    }
+
+    .section5-mid1 {
+      display: grid;
+      grid-template-columns: 580px 160px 170px;
+      column-gap: 20px;
+      align-items: start;
+      margin-top: 7px;
+    }
+
+    .diam-row {
+      display: grid;
+      grid-template-columns: 80px 90px 40px 90px 100px 1fr;
+      column-gap: 10px;
+      align-items: center;
+      margin-top: 7px;
+    }
+
+    .section5-main {
+      display: grid;
+      grid-template-columns: 290px 460px 200px;
+      column-gap: 20px;
+      align-items: start;
+      margin-top: 6px;
+    }
+
+    .state-table {
+      width: 100%;
+      table-layout: fixed;
+      font-size: 10px;
+    }
+
+    .state-table th,
+    .state-table td {
+      height: 22px;
+      text-align: left;
+    }
+
+    .state-table th:not(:first-child),
+    .state-table td:not(:first-child) {
+      text-align: center;
+    }
+
+    .material-table {
+      width: 100%;
+      table-layout: fixed;
+      font-size: 10px;
+    }
+
+    .material-table th,
+    .material-table td {
+      height: 22px;
+    }
+
+    .material-table th {
+      text-align: center;
+    }
+
+    .material-table td:first-child {
+      width: 180px;
+    }
+
+    .side-table {
+      width: 100%;
+      table-layout: fixed;
+      font-size: 10px;
+      margin-bottom: 7px;
+    }
+
+    .side-table th,
+    .side-table td {
+      height: 22px;
+      text-align: left;
+    }
+
+    .croquis-wrap {
+      width: 1026px;
+      margin: 0 auto;
+      border: 1.5px solid #000;
+      height: 520px;
+      padding: 5px 7px 7px;
+    }
+
+    .croquis-title {
+      font-weight: 700;
+      font-size: 10px;
+      margin-bottom: 4px;
+    }
+
+    .grid-croquis {
+      width: 100%;
+      height: 486px;
+      background-image:
+        repeating-linear-gradient(to right, rgba(0, 0, 0, .38) 0 1px, transparent 1px 24px),
+        repeating-linear-gradient(to bottom, rgba(0, 0, 0, .38) 0 1px, transparent 1px 24px),
+        repeating-linear-gradient(to right, transparent 0 5px, rgba(0, 0, 0, .28) 5px 6px, transparent 6px 12px),
+        repeating-linear-gradient(to bottom, transparent 0 5px, rgba(0, 0, 0, .28) 5px 6px, transparent 6px 12px);
+      background-size: 48px 48px, 48px 48px, 24px 24px, 24px 24px;
+    }
+
+    .signature {
+      width: 1026px;
+      margin: 6px auto 0;
+      display: grid;
+      grid-template-columns: 1.15fr .95fr .95fr .95fr 1.15fr;
+      border-left: 1.5px solid #000;
+      border-top: 1.5px solid #000;
+    }
+
+    .signature .sig-box {
+      height: 69px;
+      border-right: 1.5px solid #000;
+      border-bottom: 1.5px solid #000;
+      position: relative;
+      font-size: 10px;
+      font-weight: 700;
+      padding: 5px;
+    }
+
+    .signature .sig-bottom {
+      position: absolute;
+      bottom: 5px;
+      left: 5px;
+      font-weight: 700;
+    }
+
+    .bottom-time {
+      width: 925px;
+      margin: 20px auto 0;
+      display: grid;
+      grid-template-columns: 240px 1fr 220px 1fr 220px;
+      column-gap: 20px;
+      align-items: end;
+      font-size: 11px;
+      font-weight: 700;
+    }
+
+    .slash-date {
+      display: inline-block;
+      width: 130px;
+      height: 30px;
+      border-bottom: 1.5px solid #000;
+      position: relative;
+    }
+
+    .slash-date:before,
+    .slash-date:after {
+      content: "";
+      position: absolute;
+      bottom: 0;
+      height: 28px;
+      border-left: 2px solid #000;
+      transform: skewX(-28deg);
+    }
+
+    .slash-date:before {
+      left: 45px;
+    }
+
+    .slash-date:after {
+      left: 82px;
+    }
+
+    .time-line {
+      display: inline-block;
+      width: 140px;
+      border-bottom: 1.5px solid #000;
+      height: 14px;
+    }
+
+    @media print {
+
+      html,
+      body {
+        width: 210mm;
+        height: auto;
+        margin: 0;
+        padding: 0;
+        background: #fff;
+      }
+
+      .page {
+        width: 1120px !important;
+        height: 1588px !important;
+        min-height: 1588px !important;
+        max-height: 1588px !important;
+        margin: 0 !important;
+        padding: 44px 48px 36px 48px !important;
+        overflow: hidden !important;
+
+        /*
+      1120px x 1588px es la proporción A4 de tu diseño.
+      0.707 lo lleva aproximadamente a 794px x 1123px,
+      que equivale a A4 en Chromium/PDF.
+    */
+        zoom: 0.707;
+
+        page-break-after: always;
+        break-after: page;
+        page-break-inside: avoid;
+        break-inside: avoid;
+      }
+
+      .page:last-child {
+        page-break-after: auto;
+        break-after: auto;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+  <main class="page page1">
+    <div class="sedapal-logo">sedapal</div>
+
+    <div class="top-title">ORDEN SERVICIO: {{ orden.numero_servicio | default('', true) }}</div>
+
+    <div class="header-data">
+      <div class="row">
+        <div><b>NIS:</b> <b>{{ orden.nis | default('', true) }}</b></div>
+        <div>Generada por:{{ orden.generada_por | default('', true) }}</div>
+        <div>CUS: {{ orden.cus | default('', true) }}</div>
+        <div>CUP:{{ orden.cup | default('', true) }}</div>
+      </div>
+      <div class="row two">
+        <div>Of.Comerc:{{ orden.oficina_comercial | default('', true) }}</div>
+        <div>Ruta: {{ orden.ruta | default('', true) }}</div>
+        <div>Itin: {{ orden.itinerario | default('', true) }}</div>
+      </div>
+      <div class="row two date-row">
+        <div>TipSum:{{ orden.tipo_suministro }}</div>
+        <div>Fecha Emisión:</div>
+        <div>{{ orden.fecha_emision }}&nbsp;&nbsp;F.Est.Resol.:&nbsp;&nbsp;{{ orden.fecha_resolucion }}</div>
+      </div>
+      <div class="row three">
+        <div>Activ.Solicitada:</div>
+        <div>{{ orden.actividad_solicitada | default('', true) }}</div>
+      </div>
+      <div class="row four">
+        <div>Observaciones: {{ orden.observaciones | default('', true) }}</div>
+        <div>{{ orden.situacion_predio | default('', true) }}</div>
+      </div>
+      <div class="row contract">
+        <div>Contratista:{{ orden.contratista | default('', true) }}</div>
+        <div>Reclamo:{{ orden.reclamo | default('', true) }}</div>
+        <div>Exped:{{ orden.expediente | default('', true) }}</div>
+      </div>
+    </div>
+
+    <section class="registered">
+      <div class="registered-title">1.- Datos Registrados</div>
+      <div class="registered-body">
+        <div class="reg-line small-b">1A) DEL USUARIO</div>
+        <div class="reg-line user-line">Nombre/Raz.Soc: {{ orden.razon_social | default('', true) }}</div>
+
+        <table class="reg-small-table t-ubic">
+          <tr>
+            <td>Ubic. Cnx.</td>
+            <td style="width:52px; text-align:center;">Pisos</td>
+          </tr>
+          <tr>
+            <td>{{ orden.ubicacion_conexion | default('', true) }}</td>
+            <td style="text-align:center;">{{ orden.pisos | default('', true) }}</td>
+          </tr>
+        </table>
+        <table class="reg-small-table t-abast">
+          <tr>
+            <td>Cod Abast.</td>
+            <td>{{ orden.codigo_abastecimiento | default('', true) }}</td>
+          </tr>
+          <tr>
+            <td>Horarios</td>
+            <td>{{ orden.horario_abastecimiento | default('', true) }}</td>
+          </tr>
+        </table>
+
+        <div class="reg-line">LE/RUC: {{ orden.ruc | default('', true) }}&nbsp;&nbsp;&nbsp;Telf/Fax: {{ orden.telefono |
+          default('', true) }}</div>
+        <div class="reg-line small-b">1B) DEL PREDIO</div>
+        <div class="reg-line">Dirección:&nbsp;&nbsp; {{ orden.direccion | default('', true) }}</div>
+        <div class="reg-line">Urb/AAHH/PPJJ: {{ orden.urbanizacion | default('', true) }}</div>
+        <div class="reg-line">Distrito: {{ orden.distrito | default('', true) }}</div>
+        <div class="reg-line">Referencia: {{ orden.referencia | default('', true) }}</div>
+        <div class="reg-line">Acceso inmueble: {{ orden.acceso_inmueble | default('', true) }}</div>
+        <div class="reg-line">CUA: {{ orden.cua | default('', true) }}&nbsp;&nbsp; {{ orden.actividad_predio |
+          default('', true) }}</div>
+        <div class="reg-line">Medidor: {{ orden.medidor | default('', true) }}&nbsp;&nbsp; Diám: {{ orden.diametro |
+          default('', true) }}&nbsp;&nbsp; Ult.Lect: {{ orden.ultima_lectura | default('', true)
+          }}&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Disp.Segur: {{ orden.dispositivo_seguridad | default('', true) }}</div>
+        <div class="reg-line">Pto Medida: {{ orden.punto_medida | default('', true) }} <span
+            style="float:right; margin-right:52px;">Acometidas asociadas: {{ orden.acometidas_asociadas | default('',
+            true) }}</span></div>
+
+        <table class="reg-small-table t-fte">
+          <tr>
+            <td>Fte.:</td>
+            <td>{{ orden.fuente | default('', true) }}</td>
+          </tr>
+        </table>
+        <table class="reg-small-table t-uso">
+          <tr>
+            <td colspan="5" style="text-align:left;">Unid.Uso&nbsp;&nbsp;&nbsp;Cota:&nbsp;&nbsp; {{ orden.cota |
+              default('', true) }}</td>
+          </tr>
+          <tr>
+            <td>Soc</td>
+            <td>Dom</td>
+            <td>Com</td>
+            <td>Ind</td>
+            <td>Est</td>
+          </tr>
+          <tr>
+            <td>{{ orden.unidad_uso_soc | default('', true) }}</td>
+            <td>{{ orden.unidad_uso_dom | default('', true) }}</td>
+            <td>{{ orden.unidad_uso_com | default('', true) }}</td>
+            <td>{{ orden.unidad_uso_ind | default('', true) }}</td>
+            <td>{{ orden.unidad_uso_est | default('', true) }}</td>
+          </tr>
+        </table>
+      </div>
+    </section>
+
+    <div class="gap-after-reg"></div>
+
+    <section class="section section1">
+      <div class="section-title">1.- INFORME DE DATOS DEL CLIENTE</div>
+      <div class="section-body">
+        <div class="client-grid-1">
+          <div class="field-wrap"><span class="box field-value">{{ orden.apellido_paterno_cliente | default('', true)
+              }}</span><span class="label-under">APELLIDO PATERNO</span></div>
+          <div class="field-wrap"><span class="box field-value">{{ orden.apellido_materno_cliente | default('', true)
+              }}</span><span class="label-under">APELLIDO MATERNO</span></div>
+          <div class="field-wrap"><span class="box field-value">{{ orden.nombres_cliente | default('', true)
+              }}</span><span class="label-under">NOMBRES</span></div>
+          <div style="align-self:center; text-align:right;">DNI, CI, CE</div>
+          <div><span class="box field-value" style="width:100%;">{{ orden.documento_cliente | default('', true)
+              }}</span></div>
+        </div>
+
+        <div class="client-grid-2">
+          <div><b>EL ENTREVISTADO ES:</b></div>
+          <div style="text-align:right;">PROP.</div><span class="check">{{ "X" if orden.entrevistado_es | default("") ==
+            "PROP" else "" }}</span>
+          <div style="text-align:right;">FAMIL.</div><span class="check">{{ "X" if orden.entrevistado_es | default("")
+            == "FAMIL" else "" }}</span>
+          <div style="text-align:right;">INQUIL</div><span class="check">{{ "X" if orden.entrevistado_es | default("")
+            == "INQUIL" else "" }}</span>
+          <div style="display:flex; gap:8px; align-items:center;">
+            <span>OTRO</span><span class="check">{{ "X" if orden.entrevistado_es | default("") == "OTRO" else ""
+              }}</span><span class="line-input field-value" style="width:100%;">{{ orden.entrevistado_otro | default('',
+              true) }}</span>
+          </div>
+        </div>
+
+        <div class="client-grid-3">
+          <div><b>E-MAIL.</b></div><span class="line-input field-value" style="width:100%;">{{ orden.email_cliente |
+            default('', true) }}</span>
+          <div style="text-align:right;"><b>TELEF (Casa)</b></div><span class="line-input field-value"
+            style="width:100%;">{{ orden.telefono_casa_cliente | default('', true) }}</span>
+          <div style="text-align:right;"><b>CEL.</b></div><span class="line-input field-value" style="width:100%;">{{
+            orden.celular_cliente | default('', true) }}</span>
+          <div style="text-align:right;"><b>EMP. TELEF</b></div><span class="line-input field-value"
+            style="width:100%;">{{ orden.empresa_telefono_cliente | default('', true) }}</span>
+        </div>
+
+        <div class="client-grid-4">
+          <div><b>RAZÓN SOCIAL</b></div><span class="line-input field-value" style="width:100%;">{{
+            orden.razon_social_cliente | default('', true) }}</span>
+          <div style="text-align:right;"><b>FAX</b></div><span class="line-input field-value" style="width:100%;">{{
+            orden.fax_cliente | default('', true) }}</span>
+          <div style="text-align:right;"><b>RUC:</b></div><span class="line-input field-value" style="width:100%;">{{
+            orden.ruc_cliente | default('', true) }}</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="section section2">
+      <div class="section-title">2.- INFORME DE ACTUALIZACIÓN DE DATOS DEL PREDIO/FINCA (Llenar solo si hay variación)
+      </div>
+      <div class="section-body">
+        <div class="predio-row1">
+          <div class="field-wrap"><span class="box"></span><span class="label-under">COD</span></div>
+          <div class="field-wrap"><span class="box"></span><span class="label-under">NOMBRE DE VIA</span></div>
+          <div class="field-wrap"><span class="box"></span><span class="label-under">NRO</span></div>
+          <div class="field-wrap"><span class="box"></span><span class="label-under">DUPLICADOR</span></div>
+          <div class="field-wrap"><span class="box"></span><span class="label-under">PISO / DPTO</span></div>
+          <div class="field-wrap"><span class="box"></span><span class="label-under">MZ</span></div>
+          <div class="field-wrap"><span class="box"></span><span class="label-under">LOTE</span></div>
+          <div class="field-wrap"><span class="box"></span><span class="label-under">NIVELES</span></div>
+        </div>
+        <div class="predio-row2">
+          <div class="field-wrap"><span class="box"></span><span class="label-under">COD</span></div>
+          <div class="field-wrap"><span class="box"></span><span class="label-under">NOMBRE DE LOCALIDAD</span></div>
+          <div class="field-wrap"><span class="box"></span><span class="label-under">COD DISTRITO</span></div>
+          <div class="field-wrap"><span class="box"></span><span class="label-under">SECTOR</span></div>
+          <div class="field-wrap"><span class="segmented"></span><span class="label-under">DISTRITO</span></div>
+          <div class="field-wrap"><span class="segmented"></span><span
+              class="label-under">MANZANA&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;LOTE</span>
+          </div>
+          <div class="field-wrap"><span class="box"></span><span class="label-under">NSE</span></div>
+        </div>
+        <div class="center-note">EN CASO “NO” EXISTA CARTOGRAFÍA. MARQUE CON “X” EN LA OPCIÓN DÓNDE FALTA ACTUALIZAR LA
+          MISMA:</div>
+
+        <div
+          style="display: flex; justify-content: space-between; align-items: center; font-size: 10px; margin-top: 6px;">
+          <div style="display: flex; align-items: center; gap: 4px;">
+            <b>EXISTE CARTOGRAFÍA DE LA ZONA?</b><span style="margin-left:4px;">SI</span><span
+              class="check"></span><span>NO</span><span class="check"></span>
+          </div>
+          <div style="display: flex; align-items: center; gap: 4px;"><b>LOCALIDAD</b><span class="check"></span></div>
+          <div style="display: flex; align-items: center; gap: 4px;"><b>MZA</b><span class="check"></span></div>
+          <div style="display: flex; align-items: center; gap: 4px;"><b>PREDIO SUB DIVIDIDO</b><span
+              class="check"></span></div>
+          <div style="display: flex; align-items: center; gap: 4px;"><b>PREDIO UNIFICADO</b><span class="check"></span>
+          </div>
+          <div style="display: flex; align-items: center; gap: 4px;"><b>VIA SIN NOMBRE</b><span class="check"></span>
+          </div>
+        </div>
+
+        <div style="margin-top:6px; display:flex; gap:10px; align-items:center; font-size: 11px;">
+          <b style="white-space: nowrap;">OBSERVACIONES / REF. ACCESO:</b>
+          <span class="dotted-line" style="flex-grow: 1;"></span>
+          <b style="white-space: nowrap;">CORR. CUP</b>
+          <span class="check"></span>
+          <b style="white-space: nowrap; margin-left: 10px;">PREDIO NO UBICADO</b>
+          <span class="check"></span>
+        </div>
+      </div>
+    </section>
+
+    <section class="section section3">
+      <div class="section-title">3.- DETALLE DE LA INSPECCIÓN DE LAS INSTALACIONES SANITARIAS INTERIORES Y TIPO DE USO
+        DEL PREDIO</div>
+      <div class="section-body">
+        <div class="inspection-grid">
+          <div>
+            <div
+              style="display:grid; grid-template-columns: 55px 55px; width:110px; text-align:center; font-weight:700; margin-left:8px;">
+              <span>HABIT</span><span>DESH</span>
+            </div>
+            <table class="habit-table">
+              <tr>
+                <td></td>
+                <td></td>
+              </tr>
+            </table>
+            <div class="units">
+              <div class="units-title">TIPO DE UNIDADES DE USO</div>
+              <table>
+                <tr>
+                  <td class="row-label"></td>
+                  <th>SOC</th>
+                  <th>DOM</th>
+                  <th>COM</th>
+                  <th>IND</th>
+                  <th>EST</th>
+                </tr>
+                <tr>
+                  <td class="row-label">OCUPADOS</td>
+                  <td></td>
+                  <td></td>
+                  <td></td>
+                  <td></td>
+                  <td></td>
+                </tr>
+                <tr>
+                  <td class="row-label">DESOCUPADOS</td>
+                  <td></td>
+                  <td></td>
+                  <td></td>
+                  <td></td>
+                  <td></td>
+                </tr>
+              </table>
+            </div>
+          </div>
+          <div class="interior">
+            <div class="interior-title">INFORME DE INSTALACIONES INTERIORES</div>
+            <table>
+              <tr>
+                <th style="text-align:center;">SITUACIÓN</th>
+                <th>INODOR</th>
+                <th>LAVAT</th>
+                <th>DUCHA</th>
+                <th>URINAR</th>
+                <th>GRIFO</th>
+                <th>CISTE</th>
+                <th>TANQUE</th>
+                <th>PISCINA</th>
+                <th>BIDET</th>
+              </tr>
+              <tr>
+                <td>BUENO</td>
+                <td></td>
+                <td></td>
+                <td></td>
+                <td></td>
+                <td></td>
+                <td></td>
+                <td></td>
+                <td></td>
+                <td></td>
+              </tr>
+              <tr>
+                <td>CON FUGA</td>
+                <td></td>
+                <td></td>
+                <td></td>
+                <td></td>
+                <td></td>
+                <td></td>
+                <td></td>
+                <td></td>
+                <td></td>
+              </tr>
+              <tr>
+                <td>CDOC/CLAUSURA</td>
+                <td></td>
+                <td></td>
+                <td></td>
+                <td></td>
+                <td></td>
+                <td></td>
+                <td></td>
+                <td></td>
+                <td></td>
+              </tr>
+              <tr>
+                <td>TOTALES</td>
+                <td></td>
+                <td></td>
+                <td></td>
+                <td></td>
+                <td></td>
+                <td></td>
+                <td></td>
+                <td></td>
+                <td></td>
+              </tr>
+            </table>
+          </div>
+        </div>
+        <div class="cua-row"><b>CUA</b><span class="line-input" style="width:100%;"></span><b
+            style="text-align:right;">VARIÓ ACTIVIDAD DEL PREDIO</b><span class="check"></span></div>
+        <div class="insp-row">
+          <b>INSPECCIÓN REALIZADA</b>
+          <table class="mini-choice">
+            <tr>
+              <td>Int Total</td>
+              <td></td>
+              <td>Int Parcial</td>
+              <td></td>
+              <td>Externa</td>
+              <td></td>
+            </tr>
+          </table>
+          <div style="margin-left: 12px;">
+            <b style="font-size: 10px;">MOTIVO DE NO INGRESO</b>
+            <div class="tiny-note" style="margin-top: 1px;">(Solo para O/S dirigidos a Inspección Interna)</div>
+          </div>
+          <table class="mini-choice">
+            <tr>
+              <td>Oposición</td>
+              <td></td>
+              <td>Ausente</td>
+              <td></td>
+              <td>Otros</td>
+              <td></td>
+            </tr>
+          </table>
+        </div>
+        <div class="obs-row"><b style="padding-left:20px;">OBSERVACIONES:</b>
+          <div class="obs-lines"></div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <main class="page page2">
+    <section class="section section4" style="margin-top:0;">
+      <div class="section-title">4.- INFORME DE ACTUALIZACION DE DATOS DE LA CONEXIÓN DE AGUA</div>
+      <div class="section-body">
+        <div class="conn-row1">
+          <b style="align-self:center;">FRENTE CONEXIÓN</b>
+          <div>
+            <div class="segmented-group">
+              <div></div>
+              <div></div>
+              <div></div>
+              <div></div>
+              <div></div>
+              <div></div>
+              <div></div>
+              <div></div>
+              <div></div>
+              <div></div>
+              <div></div>
+              <div></div>
+              <div></div>
+            </div>
+            <div class="center-labels">
+              <span>DISTRITO</span><span>MANZANA</span><span>LOTE</span><span>FTE</span><span>SEC</span>
+            </div>
+          </div>
+          <div>
+            <div class="input-box"></div>
+            <div class="label-under">COTA</div>
+          </div>
+          <b style="align-self:center; text-align:right;">Diametro Cnx.:</b>
+          <div class="input-box"></div>
+        </div>
+        <div class="conn-row1b">
+          <div>
+            <div class="strip-title">UBICACIÓN DE LA CAJA DE CONTROL</div>
+            <table class="option-strip">
+              <tr>
+                <td>Vereda</td>
+                <td>Esquina</td>
+                <td>Interior</td>
+                <td>Int S. Acc</td>
+                <td>Espalda</td>
+                <td>Jardín</td>
+                <td>Azotea</td>
+                <td>Escalera</td>
+                <td>Pared</td>
+                <td>Pista</td>
+                <td>Otra mza</td>
+                <td>No Ubic</td>
+              </tr>
+            </table>
+          </div>
+          <div>
+            <div class="strip-title">IMPOSIBILIDAD</div>
+            <table class="option-strip">
+              <tr>
+                <td>Tierra</td>
+                <td>Desmonte</td>
+                <td>Material</td>
+                <td>Vehículo</td>
+                <td>Ven Amb</td>
+                <td>Otros</td>
+              </tr>
+            </table>
+          </div>
+        </div>
+        <div class="conn-row2">
+          <div>
+            <div class="strip-title">ESTADO DE LA CAJA</div>
+            <table class="option-strip">
+              <tr>
+                <td>Bueno</td>
+                <td>Profundo</td>
+                <td>Loza rota</td>
+                <td>Encemen.</td>
+                <td>Con tierra</td>
+                <td>Con agua</td>
+                <td>Ag negras</td>
+                <td>C. Ratas</td>
+              </tr>
+            </table>
+          </div>
+          <div>
+            <div class="strip-title">TIPO DE SEGURO DE TAPA</div>
+            <table class="option-strip">
+              <tr>
+                <td>Lengüeta</td>
+                <td>Hexag.</td>
+                <td>Imant. R</td>
+                <td>Iman. T</td>
+              </tr>
+            </table>
+          </div>
+          <div>
+            <div class="strip-title">ESTADO DE LA TAPA</div>
+            <table class="option-strip">
+              <tr>
+                <td>Bueno</td>
+                <td>Trabada</td>
+                <td>Descuad.</td>
+                <td>Rota</td>
+                <td>Sin Seg.</td>
+                <td>C/Seg Mal Est</td>
+                <td>Sin Tapa</td>
+              </tr>
+            </table>
+          </div>
+        </div>
+        <div class="conn-row3">
+          <table class="service-medidor">
+            <tr>
+              <th colspan="2" class="group">VIGENTE</th>
+              <th colspan="3" class="group">CERRADO</th>
+              <th colspan="2" class="group">OTRO</th>
+            </tr>
+            <tr>
+              <td>Sin Serv Int</td>
+              <td>Con Serv Int</td>
+              <td>Simple</td>
+              <td>A. Caja</td>
+              <td>Matriz</td>
+              <td>Directo</td>
+              <td>Retirado</td>
+            </tr>
+            <tr>
+              <td></td>
+              <td></td>
+              <td></td>
+              <td></td>
+              <td></td>
+              <td></td>
+              <td></td>
+            </tr>
+          </table>
+          <div>
+            <div style="text-align:center; font-weight:700; font-size:10px; margin-bottom:2px;">NRO DE CONEXIONES DEL
+              PREDIO : ................</div>
+            <table class="meter-table">
+              <tr>
+                <th colspan="5">MEDIDOR</th>
+                <th>NIPLE</th>
+                <th>S/N/M</th>
+              </tr>
+              <tr>
+                <th>DIAM</th>
+                <th colspan="3">NUMERO DE MEDIDOR</th>
+                <th>LECTURA</th>
+                <th></th>
+                <th></th>
+              </tr>
+              <tr>
+                <td>1ra. Cnx</td>
+                <td colspan="3"></td>
+                <td></td>
+                <td></td>
+                <td></td>
+              </tr>
+              <tr>
+                <td>2da Cnx</td>
+                <td colspan="3"></td>
+                <td></td>
+                <td></td>
+                <td></td>
+              </tr>
+              <tr>
+                <td>3ra Cnx</td>
+                <td colspan="3"></td>
+                <td></td>
+                <td></td>
+                <td></td>
+              </tr>
+            </table>
+          </div>
+        </div>
+        <div class="checks-line">
+          <b>ABASTECIMIENTO DE AGUA EN LA ZONA :</b><span>SI</span><span class="check"></span><span>NO</span><span
+            class="check"></span>
+          <div>
+            <div class="strip-title">FUGA EN CAJA:</div>
+            <table class="option-strip option-strip-with-header">
+              <tr>
+                <th>Antes de Medidor</th>
+                <th>Desp. De Medidor</th>
+                <th>Sin Fuga</th>
+              </tr>
+              <tr>
+                <td></td>
+                <td></td>
+                <td></td>
+              </tr>
+            </table>
+          </div>
+        </div>
+        <div class="conn-row4">
+          <div>
+            <div class="strip-title">ESTADO DEL MEDIDOR</div>
+            <table class="option-strip option-strip-with-header">
+              <tr>
+                <th>Registra</th>
+                <th>Paralizado</th>
+                <th>Intermit.</th>
+                <th>Vandaliz.</th>
+              </tr>
+              <tr>
+                <td></td>
+                <td></td>
+                <td></td>
+                <td></td>
+              </tr>
+            </table>
+            <table class="prec-table" style="margin-top:6px;">
+              <tr>
+                <th>PRECINTOS</th>
+                <th>INSTAL.</th>
+                <th>CALIBR.</th>
+              </tr>
+              <tr>
+                <td>Bueno</td>
+                <td></td>
+                <td></td>
+              </tr>
+              <tr>
+                <td>Roto / Manip.</td>
+                <td></td>
+                <td></td>
+              </tr>
+              <tr>
+                <td>No Existe</td>
+                <td></td>
+                <td></td>
+              </tr>
+            </table>
+          </div>
+          <div>
+            <div class="strip-title">INCIDENCIAS DEL MEDIDOR</div>
+            <div style="display:grid; grid-template-columns: 285px 320px; column-gap:20px;">
+              <div>
+                <table class="inc-table">
+                  <tr>
+                    <td>P/los Des</td>
+                    <td>Digit Desc.</td>
+                    <td>Invertido</td>
+                    <td>Con Agua</td>
+                    <td>L. Opaca</td>
+                  </tr>
+                </table>
+                <table class="valv-table" style="margin-top:6px;">
+                  <tr>
+                    <th></th>
+                    <th colspan="2">VÁLVULAS</th>
+                    <th colspan="2">MATERIAL</th>
+                  </tr>
+                  <tr>
+                    <td></td>
+                    <td>TELESC</td>
+                    <td>PURGA</td>
+                    <td>BRONCE</td>
+                    <td>PVC</td>
+                  </tr>
+                  <tr>
+                    <td>ENTRADA</td>
+                    <td></td>
+                    <td class="shade"></td>
+                    <td></td>
+                    <td></td>
+                  </tr>
+                  <tr>
+                    <td>SALIDA</td>
+                    <td></td>
+                    <td class="shade"></td>
+                    <td></td>
+                    <td></td>
+                  </tr>
+                </table>
+              </div>
+              <div>
+                <table class="inc-table">
+                  <tr>
+                    <td>L. Pavon.</td>
+                    <td>L. Rota</td>
+                    <td>L. Rayada</td>
+                    <td>Mica Aguj.</td>
+                    <td>Cont Sue / S.C</td>
+                    <td>Reg Antihor.</td>
+                    <td>Med Roto</td>
+                  </tr>
+                </table>
+                <div class="strip-title" style="margin-top:28px;">DISPOSITIVO DE SEGURIDAD</div>
+                <table class="security-table option-strip-with-header">
+                  <tr>
+                    <th>Abrazad.</th>
+                    <th>Protector</th>
+                    <th>Anclaje</th>
+                    <th>Pulpo</th>
+                    <th>Dado C.</th>
+                    <th>Otros</th>
+                  </tr>
+                  <tr>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                  </tr>
+                </table>
+              </div>
+            </div>
+          </div>
+          <div>
+            <table class="security-table" style="margin-top:14px;">
+              <tr>
+                <th colspan="2" style="font-size:10px; height:22px;">POSIBLE CLAND</th>
+              </tr>
+              <tr>
+                <td style="width:50%; height:25px;">SI</td>
+                <td>NO</td>
+              </tr>
+            </table>
+          </div>
+        </div>
+        <div style="margin-top:7px; display:grid; grid-template-columns:155px 1fr; column-gap:8px; align-items:center;">
+          <b>OBSERVACIONES / REF. ACCESO:</b><span class="dotted-line" style="width:100%;"></span>
+        </div>
+      </div>
+    </section>
+
+    <section class="section section5">
+      <div class="section-title">5.- INFORME DE ACTUALIZACION DE DATOS DE LA CAJA DE REGISTRO (ALCANTARILLADO)</div>
+      <div class="section-body">
+        <div class="section5-top">
+          <b style="align-self:center;">FRENTE CONEXIÓN</b>
+          <div>
+            <div class="segmented-group">
+              <div></div>
+              <div></div>
+              <div></div>
+              <div></div>
+              <div></div>
+              <div></div>
+              <div></div>
+              <div></div>
+              <div></div>
+              <div></div>
+              <div></div>
+              <div></div>
+              <div></div>
+            </div>
+            <div class="labels">
+              <span>DISTRITO</span><span>MANZANA</span><span>LOTE</span><span>FTE</span><span>SEC</span>
+            </div>
+          </div>
+          <div>
+            <div class="input-box"></div>
+            <div class="label-under">COTA HORIZONTAL</div>
+          </div>
+          <div>
+            <div class="input-box"></div>
+            <div class="label-under">COTA VERTICAL</div>
+          </div>
+          <div>
+            <div class="input-box"></div>
+            <div class="label-under">LONG. CAJA / RED</div>
+          </div>
+          <div>
+            <div class="input-box"></div>
+            <div class="label-under">PROFUNDIDAD</div>
+          </div>
+        </div>
+        <div class="section5-mid1">
+          <div>
+            <div class="strip-title">UBICACIÓN DE LA CAJA DE REGISTRO</div>
+            <table class="option-strip option-strip-with-header">
+              <tr>
+                <th>Vereda</th>
+                <th>Esquina</th>
+                <th>Interior</th>
+                <th>Int Sin Acceso</th>
+                <th>Int Pr. y desc Pr. Vecino</th>
+                <th>Espalda</th>
+                <th>Jardín</th>
+                <th>Escalera</th>
+                <th>Pista</th>
+                <th>No Ubic</th>
+                <th>Sin Cnx</th>
+              </tr>
+              <tr>
+                <td></td>
+                <td></td>
+                <td></td>
+                <td></td>
+                <td></td>
+                <td></td>
+                <td></td>
+                <td></td>
+                <td></td>
+                <td></td>
+                <td></td>
+              </tr>
+            </table>
+          </div>
+          <div>
+            <div class="strip-title">TIPO DE SUELO</div>
+            <table class="option-strip">
+              <tr>
+                <td>Tierra</td>
+                <td>Asfalto</td>
+              </tr>
+              <tr>
+                <td>Concreto</td>
+                <td>Mixto</td>
+              </tr>
+            </table>
+          </div>
+          <div>
+            <div class="strip-title">TRAMPA DE GRASAS</div>
+            <table class="option-strip option-strip-with-header">
+              <tr>
+                <th>Si</th>
+                <th>No</th>
+                <th>No Aplica</th>
+              </tr>
+              <tr>
+                <td></td>
+                <td></td>
+                <td></td>
+              </tr>
+            </table>
+          </div>
+        </div>
+        <div class="diam-row"><b>DIAMETRO</b>
+          <div class="input-box"></div><b>SILO</b>
+          <div class="input-box"></div><b>MATERIAL DE:</b><span></span>
+        </div>
+        <div class="section5-main">
+          <div>
+            <table class="state-table">
+              <tr>
+                <th>ESTADO DE:</th>
+                <th>TAPA</th>
+                <th>CAJA</th>
+                <th>TUBO</th>
+              </tr>
+              <tr>
+                <td>Buena</td>
+                <td></td>
+                <td></td>
+                <td></td>
+              </tr>
+              <tr>
+                <td>Mala</td>
+                <td></td>
+                <td class="shade"></td>
+                <td class="shade"></td>
+              </tr>
+              <tr>
+                <td>Regular</td>
+                <td></td>
+                <td></td>
+                <td></td>
+              </tr>
+              <tr>
+                <td>Sin Tapa</td>
+                <td></td>
+                <td class="shade"></td>
+                <td class="shade"></td>
+              </tr>
+              <tr>
+                <td>Colapsada</td>
+                <td class="shade"></td>
+                <td></td>
+                <td></td>
+              </tr>
+            </table>
+            <div class="strip-title-left" style="margin-top:6px;">POSIBLE CLAND</div>
+            <table class="security-table" style="width:92px;">
+              <tr>
+                <td style="width:50%;">SI</td>
+                <td>NO</td>
+              </tr>
+            </table>
+          </div>
+          <table class="material-table">
+            <tr>
+              <th></th>
+              <th>TAPA</th>
+              <th>CAJA</th>
+              <th>TUBERIA</th>
+            </tr>
+            <tr>
+              <td>Policloruro De Vinilo (Pvc)</td>
+              <td></td>
+              <td></td>
+              <td></td>
+            </tr>
+            <tr>
+              <td>Concreto</td>
+              <td></td>
+              <td></td>
+              <td></td>
+            </tr>
+            <tr>
+              <td>Fierro</td>
+              <td></td>
+              <td></td>
+              <td></td>
+            </tr>
+            <tr>
+              <td>Fibra Cemento</td>
+              <td></td>
+              <td></td>
+              <td></td>
+            </tr>
+            <tr>
+              <td>Arcilla Vitrificada</td>
+              <td></td>
+              <td></td>
+              <td></td>
+            </tr>
+            <tr>
+              <td>Acero</td>
+              <td></td>
+              <td></td>
+              <td></td>
+            </tr>
+            <tr>
+              <td>Polietileno</td>
+              <td></td>
+              <td></td>
+              <td></td>
+            </tr>
+            <tr>
+              <td>Otros</td>
+              <td></td>
+              <td></td>
+              <td></td>
+            </tr>
+          </table>
+          <div>
+            <table class="side-table">
+              <tr>
+                <th>SISTEMA DE TRATAMIENTO</th>
+                <th></th>
+              </tr>
+              <tr>
+                <td>De Sólidos y Grasas</td>
+                <td></td>
+              </tr>
+              <tr>
+                <td>Por Temperatura y PH</td>
+                <td></td>
+              </tr>
+              <tr>
+                <td>D.B.O.</td>
+                <td></td>
+              </tr>
+            </table>
+            <table class="side-table">
+              <tr>
+                <th>TIPO DE DESCARGA</th>
+                <th></th>
+              </tr>
+              <tr>
+                <td>Doméstica Única</td>
+                <td></td>
+              </tr>
+              <tr>
+                <td>Doméstica Múltiple</td>
+                <td></td>
+              </tr>
+              <tr>
+                <td>Industrial Única</td>
+                <td></td>
+              </tr>
+              <tr>
+                <td>Industrial Múltiple</td>
+                <td></td>
+              </tr>
+              <tr>
+                <td>Mixtas</td>
+                <td></td>
+              </tr>
+            </table>
+          </div>
+        </div>
+        <div style="margin-top:5px; display:grid; grid-template-columns:155px 1fr; column-gap:8px; align-items:center;">
+          <b>OBSERVACIONES / REF. ACCESO:</b><span class="dotted-line" style="width:100%;"></span>
+        </div>
+      </div>
+    </section>
+
+    <div class="croquis-wrap">
+      <div class="croquis-title">CROQUIS</div>
+      <div class="grid-croquis"></div>
+    </div>
+
+    <div class="signature">
+      <div class="sig-box">NOMBRE Y FIRMA DEL CLIENTE <div class="sig-bottom">DNI:</div>
+      </div>
+      <div class="sig-box">INSPECTOR/OPERARIO <div class="sig-bottom">COD:</div>
+      </div>
+      <div class="sig-box">SUPERVISION <div class="sig-bottom">COD:</div>
+      </div>
+      <div class="sig-box">DIGITADO <div class="sig-bottom">COD:</div>
+      </div>
+      <div class="sig-box">ARCHIVO COMERCIAL <div class="sig-bottom">FECHA:</div>
+      </div>
+    </div>
+
+    <div class="bottom-time">
+      <div>FECHA:<span class="slash-date"></span></div>
+      <div></div>
+      <div>HORA INICIAL&nbsp;&nbsp;&nbsp;<span class="time-line"></span></div>
+      <div></div>
+      <div>HORA FINAL&nbsp;&nbsp;&nbsp;<span class="time-line"></span></div>
+    </div>
+  </main>
+
+</body>
+
+</html>

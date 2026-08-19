@@ -1,0 +1,28 @@
+# Entorno y secretos -- nunca en git
+.env
+.env.*
+!.env.example
+
+# Entorno virtual Python
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Logs y estado en runtime (pueden contener tokens/headers de auth)
+*.log
+auth_debug.log
+uvicorn.log
+.fastapi_instance.lock
+
+# Archivos de prueba/artefactos sueltos generados durante desarrollo
+test.jpg
+test_media.py
+check_db.py
+orden_servicio_*.pdf
+
+# Backups locales
+app_backup_*/
+ops/backup_*/
+*.bak
+*.bak-*

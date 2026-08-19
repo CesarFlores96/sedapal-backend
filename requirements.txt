@@ -1,0 +1,12 @@
+fastapi
+httpx==0.28.1
+uvicorn[standard]
+psycopg[binary]
+psycopg_pool
+python-dotenv
+pydantic-settings
+python-multipart
+pyjwt[crypto]
+piexif
+fastembed==0.8.0
+numpy==2.5.2
