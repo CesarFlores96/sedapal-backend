@@ -10,6 +10,7 @@ from pydantic import BaseModel, Field
 from app.config import get_settings
 from app.database import get_pool
 from app.repositories.shared import execute_fetch_all_dict, fetch_all_dict
+from app.repositories.supervision_table import ensure_supervision_media_transit_schema
 
 
 router = APIRouter(prefix="/private", tags=["private-files"])
@@ -298,6 +299,7 @@ async def get_pending_transit_media(limit: int = Query(default=200, ge=1, le=500
     final y llame a `complete_transit_media` para borrarla de aqui. Protegido
     solo por x-api-key (llamada servicio-a-servicio, no de un usuario)."""
 
+    await ensure_supervision_media_transit_schema(get_pool())
     rows = await fetch_all_dict(get_pool(), """
       SELECT id, work_order_number, media_type, media_path, mime_type, description,
         supply_code, captured_at::text, latitude, longitude, created_at::text
@@ -334,6 +336,7 @@ async def complete_transit_media(transit_id: int = ApiPath(..., ge=1)) -> dict:
     existe (llamada repetida tras un corte a medias), devuelve success igual,
     para que el script pueda reintentar sin quedar bloqueado."""
 
+    await ensure_supervision_media_transit_schema(get_pool())
     rows = await fetch_all_dict(
         get_pool(),
         "SELECT media_path FROM public.supervision_media_transit WHERE id = %s",
