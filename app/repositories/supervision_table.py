@@ -797,6 +797,100 @@ async def ensure_supervision_media_schema(pool: AsyncConnectionPool) -> None:
     _supervision_media_schema_ready = True
 
 
+_supervision_media_transit_schema_ready = False
+
+
+async def ensure_supervision_media_transit_schema(pool: AsyncConnectionPool) -> None:
+    """Tabla de respaldo temporal (solo AWS): evidencia subida cuando el
+    servidor local estaba inalcanzable, pendiente de que el script de
+    reconciliacion en la PC local la copie a `supervision_media` local y la
+    borre de aqui. Nunca se lee desde web/movil como fuente de evidencia real."""
+
+    global _supervision_media_transit_schema_ready
+    if _supervision_media_transit_schema_ready:
+        return
+
+    async with pool.connection() as connection:
+        async with connection.cursor(row_factory=dict_row) as cursor:
+            await cursor.execute(
+                """
+                CREATE TABLE IF NOT EXISTS public.supervision_media_transit (
+                  id bigserial PRIMARY KEY,
+                  work_order_number text NOT NULL,
+                  media_type text NOT NULL CHECK (media_type IN ('photo', 'video')),
+                  media_path text NOT NULL,
+                  mime_type text,
+                  description text,
+                  supply_code text NOT NULL,
+                  captured_at timestamptz NOT NULL DEFAULT NOW(),
+                  latitude numeric,
+                  longitude numeric,
+                  created_at timestamptz NOT NULL DEFAULT NOW()
+                );
+                """
+            )
+            await cursor.execute(
+                """
+                CREATE UNIQUE INDEX IF NOT EXISTS uq_supervision_media_transit_work_order_path
+                  ON public.supervision_media_transit (work_order_number, media_path);
+                """
+            )
+        await connection.commit()
+
+    _supervision_media_transit_schema_ready = True
+
+
+async def register_supervision_media_transit(
+    pool: AsyncConnectionPool,
+    work_order_number: str,
+    media_type: str,
+    media_path: str,
+    mime_type: str | None,
+    description: str | None,
+    supply_code: str,
+    *,
+    captured_at: datetime | None,
+    latitude: float | None,
+    longitude: float | None,
+) -> dict:
+    async with pool.connection() as connection:
+        async with connection.cursor(row_factory=dict_row) as cursor:
+            await cursor.execute(
+                """
+                INSERT INTO public.supervision_media_transit
+                  (work_order_number, media_type, media_path, mime_type, description,
+                   supply_code, captured_at, latitude, longitude)
+                VALUES (%s, %s, %s, %s, %s, %s, COALESCE(%s, NOW()), %s, %s)
+                ON CONFLICT (work_order_number, media_path) DO NOTHING
+                RETURNING id, work_order_number, media_type, media_path, mime_type,
+                          description, supply_code, captured_at::text, latitude, longitude,
+                          created_at::text
+                """,
+                (work_order_number, media_type, media_path, mime_type, description,
+                 supply_code, captured_at, latitude, longitude),
+            )
+            row = await cursor.fetchone()
+        await connection.commit()
+
+    if row is None:
+        # Reintento del cliente (conexion inestable en el fallback): la fila ya
+        # existe, se devuelve la existente para idempotencia.
+        async with pool.connection() as connection:
+            async with connection.cursor(row_factory=dict_row) as cursor:
+                await cursor.execute(
+                    """
+                    SELECT id, work_order_number, media_type, media_path, mime_type,
+                           description, supply_code, captured_at::text, latitude, longitude,
+                           created_at::text
+                    FROM public.supervision_media_transit
+                    WHERE work_order_number = %s AND media_path = %s
+                    """,
+                    (work_order_number, media_path),
+                )
+                row = await cursor.fetchone()
+
+    return row
+
 
 async def get_supervision_access(
     pool: AsyncConnectionPool,

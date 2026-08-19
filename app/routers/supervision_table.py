@@ -12,11 +12,15 @@ from app.media_storage import (
     embed_photo_metadata,
     find_supervision_signed_pdf,
     supervision_media_dir,
+    supervision_media_transit_dir,
+    supervision_media_transit_url,
     supervision_media_url,
     supervision_signed_pdf_path,
 )
 from app.repositories.supervision_table import (
     ensure_supervision_media_schema,
+    ensure_supervision_media_transit_schema,
+    register_supervision_media_transit,
     create_supervision_draft,
     delete_supervision_photo,
     export_supervision_txt,
@@ -336,6 +340,105 @@ async def post_record_media(
             media_path,
             file.content_type,
             description,
+            captured_at=parsed_captured_at,
+            latitude=latitude,
+            longitude=longitude,
+        )
+    except Exception:
+        target_path.unlink(missing_ok=True)
+        raise
+
+
+@router.post("/supervision-records/{work_order_number}/media/transit")
+async def post_record_media_transit(
+    work_order_number: str = Path(..., min_length=1, max_length=120),
+    file: UploadFile = File(...),
+    description: str | None = Form(default=None),
+    media_type: str = Form(..., alias="mediaType"),
+    latitude: float | None = Form(default=None),
+    longitude: float | None = Form(default=None),
+    captured_at: str | None = Form(default=None, alias="capturedAt"),
+    user_role: str | None = Header(default=None, alias="x-user-role"),
+    user_id: str | None = Header(default=None, alias="x-user-id"),
+) -> dict:
+    """Respaldo excepcional: el cliente (movil/web) solo llama esto cuando no
+    pudo alcanzar el servidor local (PC apagada). Escribe en una carpeta y
+    tabla de transito separadas de las reales -- ver
+    `supervision_media_transit_dir` -- para que el script de reconciliacion
+    en la PC local (D:\\Sedapal\\scripts\\reconcile-aws-media) las copie a su
+    destino final cuando la PC vuelva a prender, sin colisionar con lo que
+    suba el servidor local para el mismo dia."""
+
+    media_pool = get_pool()
+    await ensure_supervision_media_transit_schema(media_pool)
+
+    normalized_media_type = media_type.strip().lower()
+    if normalized_media_type not in {"photo", "video"}:
+        raise HTTPException(status_code=400, detail="Tipo de evidencia no valido.")
+
+    allowed_media = ALLOWED_MEDIA_TYPES.get(file.content_type or "")
+    if not allowed_media:
+        raise HTTPException(status_code=400, detail="Tipo de archivo no permitido.")
+
+    extension, detected_media_type = allowed_media
+    if detected_media_type != normalized_media_type:
+        raise HTTPException(status_code=400, detail="El tipo de evidencia no coincide con el archivo enviado.")
+
+    content = await file.read()
+    if not content:
+        raise HTTPException(status_code=400, detail="El archivo recibido esta vacio.")
+
+    if len(content) > 400 * 1024 * 1024:
+        raise HTTPException(status_code=400, detail="El archivo excede el limite permitido de 400 MB.")
+
+    access = await get_supervision_record_access(
+        get_supervision_pool(),
+        work_order_number,
+        user_role=user_role,
+        user_id=parse_user_id(user_id),
+    )
+
+    parsed_captured_at = _parse_captured_at(captured_at)
+
+    if normalized_media_type == "photo":
+        content = embed_photo_metadata(
+            content,
+            extension,
+            latitude=latitude,
+            longitude=longitude,
+            captured_at=parsed_captured_at,
+        )
+
+    supply_code = str(access.get("nis_rad") or work_order_number)
+    target_dir = supervision_media_transit_dir(work_order_number)
+
+    target_path: FsPath | None = None
+    file_name = ""
+    for _ in range(5):
+        candidate_name = build_sequential_media_filename(target_dir, supply_code, extension)
+        candidate_path = target_dir / candidate_name
+        try:
+            with candidate_path.open("xb") as handle:
+                handle.write(content)
+            file_name = candidate_name
+            target_path = candidate_path
+            break
+        except FileExistsError:
+            continue
+
+    if target_path is None:
+        raise HTTPException(status_code=500, detail="No se pudo generar un nombre de archivo unico.")
+
+    try:
+        media_path = supervision_media_transit_url(work_order_number, file_name)
+        return await register_supervision_media_transit(
+            media_pool,
+            work_order_number,
+            normalized_media_type,
+            media_path,
+            file.content_type,
+            description,
+            supply_code,
             captured_at=parsed_captured_at,
             latitude=latitude,
             longitude=longitude,

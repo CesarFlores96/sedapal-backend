@@ -109,6 +109,25 @@ def supervision_media_url(
     )
 
 
+def supervision_media_transit_dir(work_order_number: str) -> Path:
+    """Carpeta de respaldo temporal en AWS, usada solo cuando el servidor local
+    esta inalcanzable. Separada de la ruta final ({Mes}_{Año}/{dd}_{mm}_{Año}/)
+    para que el contador de `build_sequential_media_filename` nunca colisione
+    con lo que ya subio (o suba mas tarde) el servidor local para la misma
+    fecha. El script de reconciliacion en la PC local
+    (D:\\Sedapal\\scripts\\reconcile-aws-media) copia estos archivos a su
+    destino final y los borra de aqui."""
+
+    root = Path(get_settings().supervision_media_root)
+    target_dir = root / "_transit" / sanitize_folder_segment(work_order_number)
+    target_dir.mkdir(parents=True, exist_ok=True)
+    return target_dir
+
+
+def supervision_media_transit_url(work_order_number: str, file_name: str) -> str:
+    return f"/uploads/supervision-media/_transit/{sanitize_folder_segment(work_order_number)}/{file_name}"
+
+
 def build_sequential_media_filename(target_dir: Path, supply_code: str, extension: str) -> str:
     """Nombra el archivo como `{suministro}_{n}{ext}`, con `n` el siguiente
     numero disponible para ese suministro dentro de la carpeta del dia (cuenta

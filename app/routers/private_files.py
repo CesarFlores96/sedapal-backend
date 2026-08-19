@@ -289,6 +289,70 @@ async def get_pending_media(
     }
 
 
+@router.get("/sync/transit-media")
+async def get_pending_transit_media(limit: int = Query(default=200, ge=1, le=500)) -> dict:
+    """Lista evidencia (fotos/video) subida al respaldo de transito de AWS
+    (el movil/web solo escribe aqui cuando el servidor local estaba
+    inalcanzable), pendiente de que el script de reconciliacion en la PC
+    local (D:\\Sedapal\\scripts\\reconcile-aws-media) la copie a su destino
+    final y llame a `complete_transit_media` para borrarla de aqui. Protegido
+    solo por x-api-key (llamada servicio-a-servicio, no de un usuario)."""
+
+    rows = await fetch_all_dict(get_pool(), """
+      SELECT id, work_order_number, media_type, media_path, mime_type, description,
+        supply_code, captured_at::text, latitude, longitude, created_at::text
+      FROM public.supervision_media_transit
+      ORDER BY id ASC
+      LIMIT %s
+    """, [limit])
+    return {
+        "items": [
+            {
+                "id": row["id"],
+                "workOrderNumber": row["work_order_number"],
+                "mediaType": row["media_type"],
+                "mediaPath": row["media_path"],
+                "mimeType": row["mime_type"],
+                "description": row["description"],
+                "supplyCode": row["supply_code"],
+                "capturedAt": row["captured_at"],
+                "latitude": row["latitude"],
+                "longitude": row["longitude"],
+                "createdAt": row["created_at"],
+            }
+            for row in rows
+        ],
+    }
+
+
+@router.post("/sync/transit-media/{transit_id}/complete")
+async def complete_transit_media(transit_id: int = ApiPath(..., ge=1)) -> dict:
+    """Borra el archivo y la fila de transito en AWS. El script de
+    reconciliacion en la PC local llama esto SOLO despues de confirmar que el
+    archivo ya quedo copiado a la ruta final local y la fila ya existe en
+    `supervision_media` local -- nunca antes. Idempotente: si el item ya no
+    existe (llamada repetida tras un corte a medias), devuelve success igual,
+    para que el script pueda reintentar sin quedar bloqueado."""
+
+    rows = await fetch_all_dict(
+        get_pool(),
+        "SELECT media_path FROM public.supervision_media_transit WHERE id = %s",
+        [transit_id],
+    )
+    if rows:
+        relative = rows[0]["media_path"].removeprefix("/uploads/supervision-media/")
+        target = (Path(get_settings().supervision_media_root) / relative).resolve()
+        root = Path(get_settings().supervision_media_root).resolve()
+        if root in target.parents:
+            target.unlink(missing_ok=True)
+        await execute_fetch_all_dict(
+            get_pool(),
+            "DELETE FROM public.supervision_media_transit WHERE id = %s RETURNING id",
+            [transit_id],
+        )
+    return {"success": True}
+
+
 @router.get("/supervision-signatures/{supervision_id}")
 async def get_signatures(supervision_id: int = ApiPath(..., ge=1),
                          auth_user_id: str | None = Header(default=None, alias="x-auth-user-id")) -> dict:
