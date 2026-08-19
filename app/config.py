@@ -21,6 +21,14 @@ class Settings(BaseSettings):
     api_key: str = Field(..., alias="API_KEY")
     mobile_token_secret: str | None = Field(default=None, alias="MOBILE_TOKEN_SECRET")
     mobile_token_ttl_seconds: int = Field(default=60 * 60 * 12, alias="MOBILE_TOKEN_TTL_SECONDS")
+
+    # --- Auth propio (Fase 2 migracion AWS): JWT access + refresh token ---
+    # Secreto dedicado, separado de mobile_token_secret/api_key -- si falta,
+    # el JWT propio no puede firmarse (falla explicito al primer login, no un
+    # fallback silencioso a un secreto usado para otra cosa).
+    jwt_secret: str | None = Field(default=None, alias="JWT_SECRET")
+    jwt_access_ttl_seconds: int = Field(default=30 * 60, alias="JWT_ACCESS_TTL_SECONDS")
+    jwt_refresh_ttl_seconds: int = Field(default=30 * 24 * 60 * 60, alias="JWT_REFRESH_TTL_SECONDS")
     supabase_jwt_audience: str | None = Field(default="authenticated", alias="SUPABASE_JWT_AUDIENCE")
     supabase_jwt_issuer: str | None = Field(default=None, alias="SUPABASE_JWT_ISSUER")
     supabase_jwt_secret: str | None = Field(default=None, alias="SUPABASE_JWT_SECRET")

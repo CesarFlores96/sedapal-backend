@@ -256,6 +256,39 @@ async def post_signature(payload: SignaturePayload = Body(...),
     return {"success": bool(rows)}
 
 
+@router.get("/sync/pending-media")
+async def get_pending_media(
+    since_id: int = Query(default=0, ge=0),
+    limit: int = Query(default=200, ge=1, le=500),
+) -> dict:
+    """Lista evidencia (fotos/video) subida por el movil despues de `since_id`,
+    para que el script `scripts/sync_onedrive_media.ps1` en la PC local descargue
+    lo nuevo y lo deje en la carpeta OneDrive corporativa. Protegido solo por el
+    x-api-key global (app/main.py): quien llama es un proceso de sincronizacion,
+    no un usuario con sesion."""
+
+    rows = await fetch_all_dict(get_pool(), """
+      SELECT id, work_order_number, media_type, media_path, created_at::text
+      FROM public.supervision_media
+      WHERE id > %s
+      ORDER BY id ASC
+      LIMIT %s
+    """, [since_id, limit])
+    return {
+        "items": [
+            {
+                "id": row["id"],
+                "workOrderNumber": row["work_order_number"],
+                "mediaType": row["media_type"],
+                "mediaPath": row["media_path"],
+                "createdAt": row["created_at"],
+            }
+            for row in rows
+        ],
+        "nextSinceId": rows[-1]["id"] if rows else since_id,
+    }
+
+
 @router.get("/supervision-signatures/{supervision_id}")
 async def get_signatures(supervision_id: int = ApiPath(..., ge=1),
                          auth_user_id: str | None = Header(default=None, alias="x-auth-user-id")) -> dict:

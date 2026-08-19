@@ -158,6 +158,43 @@ async def get_supabase_context(pool: AsyncConnectionPool, authorization: str | N
     }
 
 
+async def resolve_actor(
+    pool: AsyncConnectionPool,
+    authorization: str | None,
+    fallback_role: str | None,
+    fallback_user_id: int | None,
+) -> tuple[str | None, int | None]:
+    """Resuelve (role, legacy_user_id) probando en orden: (1) JWT propio (Fase 2,
+    app/jwt_auth.py), (2) JWT de Supabase verificado server-side, (3) los headers
+    x-user-role/x-user-id enviados por el cliente como ultimo fallback.
+    Necesario porque el movil habla directo con FastAPI (sin un servidor
+    intermedio de confianza como Next.js que ya valido la sesion): un cliente
+    modificado podria mandar cualquier x-user-id/x-user-role sin esto.
+
+    El orden (propio antes que Supabase) es intencional: en modo dual (Fase 2),
+    un cliente ya migrado manda el JWT propio y debe resolverse con el, sin
+    depender de que Supabase siga vivo."""
+    from app.jwt_auth import verify_access_token  # import tardio: evita ciclo con repositories/auth
+
+    token = read_bearer_token(authorization)
+    if token:
+        native_payload = verify_access_token(token)
+        if native_payload:
+            user_id = int(native_payload["sub"])
+            user = await fetch_all_dict(
+                pool,
+                "SELECT id, role, is_active FROM public.users WHERE id = %s LIMIT 1;",
+                [user_id],
+            )
+            if user and user[0].get("is_active"):
+                return normalize_role(user[0].get("role")), user_id
+
+    supabase_context = await get_supabase_context(pool, authorization)
+    if supabase_context:
+        return supabase_context.get("role"), supabase_context.get("legacy_user_id")
+    return fallback_role, fallback_user_id
+
+
 def to_session_user(profile: dict) -> dict:
     return {
         "assignmentCode": normalize_assignment_code(profile.get("employee_code")),

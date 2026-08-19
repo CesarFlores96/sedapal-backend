@@ -17,6 +17,7 @@ from app.media_storage import (
 )
 from app.repositories.supervision_table import (
     ensure_supervision_media_schema,
+    create_supervision_draft,
     delete_supervision_photo,
     export_supervision_txt,
     get_supervision_access,
@@ -25,12 +26,16 @@ from app.repositories.supervision_table import (
     get_supervision_croquis_context,
     get_supervision_schema,
     import_supervision_txt_files,
+    list_completed_supervisions_for_bulk_notice,
     list_supervision_media_rows,
     list_supervision_records,
     list_supervision_photo_rows,
+    mark_supervisions_exported,
     register_supervision_media,
     register_supervision_photo,
+    restore_supervision,
     save_supervision_verified_location,
+    soft_delete_supervision,
     update_supervision_record,
 )
 
@@ -275,8 +280,8 @@ async def post_record_media(
     if not content:
         raise HTTPException(status_code=400, detail="El archivo recibido esta vacio.")
 
-    if len(content) > 200 * 1024 * 1024:
-        raise HTTPException(status_code=400, detail="El archivo excede el limite permitido de 200 MB.")
+    if len(content) > 400 * 1024 * 1024:
+        raise HTTPException(status_code=400, detail="El archivo excede el limite permitido de 400 MB.")
 
     # Valida acceso contra Supabase (fuente de verdad de la supervision) antes de
     # tocar disco. work_order_number (num_os) es la clave estable que llega del cliente.
@@ -477,3 +482,73 @@ async def post_import(
         assigned_user_id=assigned_user_id,
         allow_reassignment=allow_reassignment,
     )
+
+
+class CreateSupervisionDraftRequest(BaseModel):
+    payload: dict = Field(default_factory=dict)
+
+
+class MarkExportedRequest(BaseModel):
+    supervisionIds: list[int] = Field(default_factory=list)
+
+
+@router.post("/supervision-records")
+async def post_create_draft(
+    body: CreateSupervisionDraftRequest = Body(...),
+    user_role: str | None = Header(default=None, alias="x-user-role"),
+    user_id: str | None = Header(default=None, alias="x-user-id"),
+) -> dict:
+    actor_user_id = parse_user_id(user_id)
+    if actor_user_id is None:
+        raise HTTPException(status_code=401, detail="Tu usuario no tiene un perfil operativo vinculado.")
+    return await create_supervision_draft(
+        get_supervision_pool(),
+        body.payload,
+        user_id=actor_user_id,
+    )
+
+
+@router.delete("/supervision-records/{record_id}")
+async def delete_record(
+    record_id: int = Path(..., ge=1),
+    user_role: str | None = Header(default=None, alias="x-user-role"),
+) -> dict:
+    if not is_admin(user_role):
+        raise HTTPException(status_code=403, detail="Solo un administrador puede anular una supervision.")
+    await soft_delete_supervision(
+        get_supervision_pool(),
+        record_id,
+        deleted_by_user_id=None,
+        deleted_by_name=None,
+    )
+    return {"success": True}
+
+
+@router.post("/supervision-records/{record_id}/restore")
+async def post_restore_record(
+    record_id: int = Path(..., ge=1),
+    user_role: str | None = Header(default=None, alias="x-user-role"),
+) -> dict:
+    if not is_admin(user_role):
+        raise HTTPException(status_code=403, detail="Solo un administrador puede restaurar una supervision.")
+    await restore_supervision(get_supervision_pool(), record_id)
+    return {"success": True}
+
+
+@router.post("/supervision-records/mark-exported")
+async def post_mark_exported(
+    body: MarkExportedRequest = Body(...),
+) -> dict:
+    await mark_supervisions_exported(get_supervision_pool(), body.supervisionIds)
+    return {"success": True}
+
+
+@router.get("/supervision-records/completed-range")
+async def get_completed_range(
+    start: str = Query(..., pattern=r"^\d{4}-\d{2}-\d{2}$"),
+    end: str = Query(..., pattern=r"^\d{4}-\d{2}-\d{2}$"),
+    user_role: str | None = Header(default=None, alias="x-user-role"),
+) -> list[dict]:
+    if not is_admin(user_role):
+        raise HTTPException(status_code=403, detail="Solo un administrador puede consultar este listado.")
+    return await list_completed_supervisions_for_bulk_notice(get_supervision_pool(), start, end)

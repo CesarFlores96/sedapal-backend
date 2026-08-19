@@ -46,6 +46,7 @@ from app.routers import (
     sedapalgis,
     sedapalgis_auth,
     supervisions,
+    supervision_raw,
     supervision_table,
     updates,
     planillas,
@@ -209,7 +210,13 @@ async def api_key_middleware(
         "/api/auth/mobile/login",
         "/api/v1/auth/login",
         "/api/v1/auth/refresh",
-        "/api/local/derivation-recipients",
+        # Auth propio (Fase 2): login/refresh/logout son el punto de entrada,
+        # no pueden exigir un bearer que todavia no existe. Protegidos por su
+        # propia validacion de credenciales/token, no por este gate -- mismo
+        # criterio que /api/v1/auth/login|refresh arriba.
+        "/api/auth/login",
+        "/api/auth/refresh",
+        "/api/auth/logout",
     }
 
     if request.method == "OPTIONS":
@@ -236,6 +243,23 @@ async def api_key_middleware(
                 )
         except OSError:
             pass
+        if bearer_token:
+            # JWT propio (Fase 2) primero -- mismo orden que resolve_actor en
+            # app/supabase_auth.py, y evita que un cliente que solo tiene el
+            # JWT propio (sin x-api-key, caso de apps/mobile) quede bloqueado
+            # aqui antes de que la ruta llegue a resolver la identidad.
+            from app.jwt_auth import verify_access_token
+
+            native_payload = verify_access_token(bearer_token)
+            if native_payload:
+                extra_headers = list(request.scope.get("headers", []))
+                extra_headers.append((b"x-user-id", str(native_payload["sub"]).encode("utf-8")))
+                if native_payload.get("role"):
+                    extra_headers.append((b"x-user-role", str(native_payload["role"]).encode("utf-8")))
+                request.scope["headers"] = extra_headers
+                has_user_token = True
+                bearer_token = None  # ya resuelto, salta la verificacion de Supabase de abajo
+
         if bearer_token:
             try:
                 verify_supabase_token(bearer_token)
@@ -303,6 +327,7 @@ app.include_router(network.router, prefix="/api")
 app.include_router(navigation.router, prefix="/api")
 app.include_router(reports.router, prefix="/api")
 app.include_router(supervisions.router, prefix="/api")
+app.include_router(supervision_raw.router, prefix="/api")
 app.include_router(supervision_table.router, prefix="/api")
 app.include_router(auth.router, prefix="/api")
 app.include_router(sedapalgis.gis_router, prefix="/api")

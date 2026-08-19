@@ -115,7 +115,7 @@ async def anomaly_map_items() -> list[dict]:
 async def derivation_recipients(
     auth_user_id: str | None = Header(default=None, alias="x-auth-user-id"),
 ) -> dict:
-    # require_authenticated(auth_user_id)
+    require_authenticated(auth_user_id)
     rows = await fetch_all_dict(
         get_pool(),
         """

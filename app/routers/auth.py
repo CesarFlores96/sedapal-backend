@@ -3,14 +3,23 @@ from pydantic import BaseModel, Field
 
 from app.authz import ensure_path_access, normalize_assignment_code, normalize_role
 from app.database import get_pool
+from app.jwt_auth import (
+    create_access_token,
+    issue_refresh_token,
+    revoke_refresh_token,
+    rotate_refresh_token,
+    verify_access_token,
+)
 from app.passwords import hash_password
 from app.passwords import verify_password
 from app.repositories.auth import (
     create_user,
     create_view,
     find_user_by_identifier,
+    find_user_for_login,
     get_access_snapshot,
     get_user_by_id,
+    get_user_credentials_by_id,
     get_user_views,
     get_view_by_id,
     list_users,
@@ -22,7 +31,7 @@ from app.repositories.auth import (
     update_view,
 )
 from app.repositories.shared import execute_fetch_all_dict, execute_statement, fetch_all_dict
-from app.supabase_auth import get_supabase_context, to_session_user
+from app.supabase_auth import get_supabase_context, read_bearer_token, to_session_user
 
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -96,6 +105,24 @@ class MobileLoginRequest(BaseModel):
     password: str = Field(min_length=1, max_length=160)
 
 
+class NativeLoginRequest(BaseModel):
+    identifier: str = Field(min_length=1, max_length=120)
+    password: str = Field(min_length=1, max_length=160)
+
+
+class NativeRefreshRequest(BaseModel):
+    refreshToken: str = Field(min_length=10)
+
+
+class NativeLogoutRequest(BaseModel):
+    refreshToken: str = Field(min_length=10)
+
+
+class SelfPasswordUpdateRequest(BaseModel):
+    currentPassword: str = Field(min_length=1, max_length=160)
+    newPassword: str = Field(min_length=6, max_length=160)
+
+
 def normalize_identity(value: str) -> str:
     return value.strip().lower()
 
@@ -129,6 +156,106 @@ async def post_mobile_login(payload: MobileLoginRequest = Body(...)) -> dict:
         status_code=410,
         detail="La autenticacion movil ahora usa directamente Supabase Auth. Este endpoint ya no debe usarse.",
     )
+
+
+@router.post("/login")
+async def post_login(
+    payload: NativeLoginRequest = Body(...),
+    user_agent: str | None = Header(default=None, alias="User-Agent"),
+) -> dict:
+    """Auth propio (Fase 2): JWT access de corta duracion + refresh token
+    opaco de larga duracion. Reemplaza a Supabase Auth para clientes ya
+    migrados; convive con Supabase mientras dure la Fase 2 (modo dual)."""
+    identifier = normalize_identity(payload.identifier)
+    user = await find_user_for_login(get_pool(), identifier)
+    if not user or not user.get("is_active") or not verify_password(payload.password, user.get("password_hash")):
+        raise HTTPException(status_code=401, detail="Usuario o contrasena incorrectos.")
+
+    await touch_user_last_login(get_pool(), user["id"])
+    access_token, access_expires_at = create_access_token(user_id=user["id"], role=user.get("role"))
+    refresh_token = await issue_refresh_token(get_pool(), user_id=user["id"], user_agent=user_agent)
+    access = await get_access_snapshot(get_pool(), user_id=user["id"], role=user.get("role"))
+
+    user.pop("password_hash", None)
+    return {
+        "accessToken": access_token,
+        "accessTokenExpiresAt": access_expires_at,
+        "refreshToken": refresh_token,
+        "user": user,
+        "access": access,
+    }
+
+
+@router.post("/refresh")
+async def post_refresh(
+    payload: NativeRefreshRequest = Body(...),
+    user_agent: str | None = Header(default=None, alias="User-Agent"),
+) -> dict:
+    result = await rotate_refresh_token(get_pool(), payload.refreshToken, user_agent=user_agent)
+    user = result["user"]
+    access = await get_access_snapshot(get_pool(), user_id=user["id"], role=user.get("role"))
+    user = {**user}
+    user.pop("password_hash", None)
+    return {
+        "accessToken": result["accessToken"],
+        "accessTokenExpiresAt": result["accessTokenExpiresAt"],
+        "refreshToken": result["refreshToken"],
+        "user": user,
+        "access": access,
+    }
+
+
+@router.post("/logout")
+async def post_logout(payload: NativeLogoutRequest = Body(...)) -> dict:
+    await revoke_refresh_token(get_pool(), payload.refreshToken)
+    return {"success": True}
+
+
+@router.get("/session")
+async def get_session(
+    authorization: str | None = Header(default=None, alias="Authorization"),
+) -> dict:
+    """Valida el JWT propio (Authorization: Bearer) y devuelve el usuario +
+    su snapshot de acceso. Equivalente nativo de GET /auth/mobile/me (que
+    valida JWT de Supabase)."""
+    token = read_bearer_token(authorization)
+    payload = verify_access_token(token)
+    if not payload:
+        raise HTTPException(status_code=401, detail="No autenticado.")
+
+    user = await get_user_by_id(get_pool(), int(payload["sub"]))
+    if not user or not user.get("is_active"):
+        raise HTTPException(status_code=401, detail="Usuario inactivo o no encontrado.")
+
+    access = await get_access_snapshot(get_pool(), user_id=user["id"], role=user.get("role"))
+    return {"user": user, "access": access}
+
+
+@router.patch("/me/password")
+async def patch_auth_me_password(
+    payload: SelfPasswordUpdateRequest = Body(...),
+    authorization: str | None = Header(default=None, alias="Authorization"),
+) -> dict:
+    """Cambio de password self-service para un usuario nativo (Fase 2), sin
+    depender de acceso al modulo /personal (a diferencia de
+    PATCH /auth/users/{id}/password, pensado para que un admin gestione a
+    otros). Requiere el JWT propio (Authorization: Bearer) y la contrasena
+    actual correcta."""
+    token = read_bearer_token(authorization)
+    claims = verify_access_token(token)
+    if not claims:
+        raise HTTPException(status_code=401, detail="No autenticado.")
+
+    user_id = int(claims["sub"])
+    credentials = await get_user_credentials_by_id(get_pool(), user_id)
+    if not credentials or not credentials.get("is_active"):
+        raise HTTPException(status_code=401, detail="Usuario inactivo o no encontrado.")
+
+    if not verify_password(payload.currentPassword, credentials.get("password_hash")):
+        raise HTTPException(status_code=401, detail="La contrasena actual es incorrecta.")
+
+    await update_user_password(get_pool(), user_id, password_hash=hash_password(payload.newPassword))
+    return {"success": True}
 
 
 @router.get("/mobile/me")

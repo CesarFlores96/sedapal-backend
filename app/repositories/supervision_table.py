@@ -1380,6 +1380,139 @@ LEGACY_SUPERVISION_EXPORT_COLUMNS = [
 ]
 
 
+async def create_supervision_draft(
+    pool: AsyncConnectionPool,
+    payload: dict,
+    *,
+    user_id: int,
+) -> dict:
+    """Crea una supervision sin orden de servicio (num_os NULL) a partir de un
+    suministro. Reemplaza createSupervisionFromSupply (antes Supabase directo)."""
+    fields = await build_field_meta(pool)
+    table_columns = {field["columnName"] for field in fields} | {"verified_latitude", "verified_longitude"}
+
+    insert_payload = {key: value for key, value in payload.items() if key in table_columns}
+    insert_payload["num_os"] = None
+    insert_payload["status"] = "draft"
+    insert_payload["assigned_user_id"] = user_id
+
+    columns = list(insert_payload.keys())
+    placeholders = ", ".join(f"%({column})s" for column in columns)
+    column_list = ", ".join(quote_identifier(column) for column in columns)
+
+    async with pool.connection() as connection:
+        async with connection.cursor(row_factory=dict_row) as cursor:
+            await cursor.execute(
+                f"""
+                INSERT INTO public.supervision ({column_list})
+                VALUES ({placeholders})
+                RETURNING supervision_id;
+                """,
+                insert_payload,
+            )
+            row = await cursor.fetchone()
+        await connection.commit()
+
+    if not row:
+        raise HTTPException(status_code=500, detail="No se pudo crear la supervision.")
+
+    return await get_supervision_record(
+        pool,
+        int(row["supervision_id"]),
+        user_role=None,
+        user_id=user_id,
+    ) or {"supervisionId": int(row["supervision_id"])}
+
+
+async def soft_delete_supervision(
+    pool: AsyncConnectionPool,
+    supervision_id: int,
+    *,
+    deleted_by_user_id: int | None,
+    deleted_by_name: str | None,
+) -> None:
+    async with pool.connection() as connection:
+        async with connection.cursor(row_factory=dict_row) as cursor:
+            await cursor.execute(
+                """
+                UPDATE public.supervision
+                SET deleted_at = NOW(),
+                    deleted_by_user_id = %s,
+                    deleted_by_name = %s,
+                    updated_at = NOW()
+                WHERE supervision_id = %s AND deleted_at IS NULL
+                RETURNING supervision_id;
+                """,
+                (deleted_by_user_id, deleted_by_name, supervision_id),
+            )
+            row = await cursor.fetchone()
+        await connection.commit()
+
+    if not row:
+        raise HTTPException(status_code=404, detail="No se encontro la supervision o ya fue eliminada.")
+
+
+async def restore_supervision(
+    pool: AsyncConnectionPool,
+    supervision_id: int,
+) -> None:
+    async with pool.connection() as connection:
+        async with connection.cursor(row_factory=dict_row) as cursor:
+            await cursor.execute(
+                """
+                UPDATE public.supervision
+                SET deleted_at = NULL, deleted_by_user_id = NULL, deleted_by_name = NULL, updated_at = NOW()
+                WHERE supervision_id = %s AND deleted_at IS NOT NULL
+                RETURNING supervision_id;
+                """,
+                (supervision_id,),
+            )
+            row = await cursor.fetchone()
+        await connection.commit()
+
+    if not row:
+        raise HTTPException(status_code=404, detail="No se encontro la supervision o no estaba eliminada.")
+
+
+async def mark_supervisions_exported(
+    pool: AsyncConnectionPool,
+    supervision_ids: list[int],
+) -> None:
+    if not supervision_ids:
+        return
+    async with pool.connection() as connection:
+        async with connection.cursor() as cursor:
+            await cursor.execute(
+                """
+                UPDATE public.supervision
+                SET exported_at = NOW()
+                WHERE supervision_id = ANY(%s);
+                """,
+                (supervision_ids,),
+            )
+        await connection.commit()
+
+
+async def list_completed_supervisions_for_bulk_notice(
+    pool: AsyncConnectionPool,
+    start: str,
+    end: str,
+) -> list[dict]:
+    async with pool.connection() as connection:
+        async with connection.cursor(row_factory=dict_row) as cursor:
+            await cursor.execute(
+                """
+                SELECT supervision_id, completed_at::text, assigned_user_id
+                FROM public.supervision
+                WHERE status = 'completed'
+                  AND completed_at BETWEEN %s::timestamptz AND (%s::timestamptz + interval '1 day')
+                ORDER BY completed_at ASC;
+                """,
+                (start, end),
+            )
+            return await cursor.fetchall()
+
+
 async def export_supervision_txt(
     pool: AsyncConnectionPool,
     start: str,

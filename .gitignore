@@ -26,3 +26,6 @@ app_backup_*/
 ops/backup_*/
 *.bak
 *.bak-*
+
+# Contenido en runtime, no codigo fuente (builds OTA subidos por el updater)
+app/uploads/

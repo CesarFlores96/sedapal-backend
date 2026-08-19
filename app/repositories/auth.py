@@ -426,6 +426,27 @@ async def find_user_by_identifier(
     return rows[0] if rows else None
 
 
+async def find_user_for_login(
+    pool: AsyncConnectionPool,
+    identifier: str,
+) -> dict | None:
+    """Igual que `find_user_by_identifier` pero incluye `password_hash` --
+    separado a proposito para que ese hash nunca salga por accidente de un
+    endpoint que no sea el propio login."""
+    await ensure_users_management_schema(pool)
+    rows = await fetch_all_dict(
+        pool,
+        """
+        SELECT id, assignment_code, email, full_name, role, username, is_active, password_hash
+        FROM public.users
+        WHERE lower(email) = %s OR lower(username) = %s
+        LIMIT 1;
+        """,
+        [identifier, identifier],
+    )
+    return rows[0] if rows else None
+
+
 async def get_user_by_id(pool: AsyncConnectionPool, user_id: int) -> dict | None:
     await ensure_users_management_schema(pool)
     rows = await fetch_all_dict(
@@ -439,6 +460,25 @@ async def get_user_by_id(pool: AsyncConnectionPool, user_id: int) -> dict | None
         FROM public.users u
         LEFT JOIN public.auth_profiles_local a ON a.legacy_user_id = u.id
         WHERE u.id = %s
+        LIMIT 1;
+        """,
+        [user_id],
+    )
+    return rows[0] if rows else None
+
+
+async def get_user_credentials_by_id(pool: AsyncConnectionPool, user_id: int) -> dict | None:
+    """Igual que `get_user_by_id` pero incluye `password_hash` -- solo para
+    verificar la contrasena actual en el cambio de password self-service
+    (`PATCH /auth/me/password`). Nunca exponer este resultado tal cual en una
+    respuesta HTTP."""
+    await ensure_users_management_schema(pool)
+    rows = await fetch_all_dict(
+        pool,
+        """
+        SELECT id, is_active, password_hash
+        FROM public.users
+        WHERE id = %s
         LIMIT 1;
         """,
         [user_id],
